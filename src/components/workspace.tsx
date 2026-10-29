@@ -3,24 +3,11 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3, Briefcase, Check, KanbanSquare, LayoutDashboard, Link2, LogOut, Pencil, Plus, Target, Trash2, Users, Wallet, X } from "lucide-react";
 import ThemeToggle from "@/components/theme-toggle";
+import Board from "@/components/board";
+import { Bar, Data, Field, form, fmtDate, Header, HEALTH_TONE, LEAD_COLS, Modal, PROJECT_STATUS, ROLE_LABEL, SERVICES, Stat, TASK_COLS, dateInput, pct, rupiah } from "@/components/ui";
 import { HEALTH_LABEL, projectHealth } from "@/lib/health";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type Data = any;
-
-const TASK_COLS: [string, string][] = [["BACKLOG", "Backlog"], ["TODO", "To Do"], ["IN_PROGRESS", "Dikerjakan"], ["REVIEW", "Review"], ["DONE", "Selesai"]];
-const LEAD_COLS: [string, string][] = [["PROSPECT", "Prospek"], ["NEGOTIATION", "Negosiasi"], ["PROPOSAL_SENT", "Proposal"], ["DEAL", "Deal"], ["LOST", "Batal"]];
-const PROJECT_STATUS: [string, string][] = [["PLANNED", "Direncanakan"], ["ACTIVE", "Berjalan"], ["REVIEW", "Review"], ["COMPLETED", "Selesai"], ["CANCELLED", "Dibatalkan"]];
-const SERVICES: Record<string, string> = { LANDING_PAGE: "Landing Page", COMPANY_PROFILE: "Company Profile", CUSTOM_SYSTEM: "Sistem Web Custom", INTEGRATION: "Integrasi & Maintenance" };
-const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", MARKETING: "Marketing Strategist", DEVELOPER: "Developer" };
-const rupiah = (v: string | number | bigint) => `Rp ${BigInt(v).toLocaleString("id-ID")}`;
-const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" }) : "—";
-const HEALTH_TONE: Record<string, string> = {
-  DONE: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300", ON_TRACK: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
-  AT_RISK: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300", LATE: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300", NO_DEADLINE: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300",
-};
-const dateInput = (d?: string | null) => d ? new Date(d).toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" }) : "";
-const pct = (a: number, t: number) => t > 0 ? Math.min(100, Math.round(a / t * 100)) : 0;
 
 type Tab = "dashboard" | "board" | "projects" | "leads" | "kpi" | "team" | "finance";
 
@@ -96,31 +83,6 @@ export default function Workspace() {
   </div>;
 }
 
-/* ---------- shared ---------- */
-function Header({ title, sub, children }: { title: string; sub?: string; children?: ReactNode }) {
-  return <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-semibold tracking-tight">{title}</h1>{sub && <p className="muted mt-1 text-sm">{sub}</p>}</div>{children}</div>;
-}
-function Bar({ value, tone = "violet" }: { value: number; tone?: string }) {
-  const color = value >= 100 ? "bg-emerald-500" : tone === "violet" ? "bg-emerald-500" : "bg-sky-500";
-  return <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#1d2c24]" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}><div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${value}%` }} /></div>;
-}
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-    <div className="panel max-h-[90vh] w-full max-w-lg overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-      <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold">{title}</h2><button onClick={onClose} aria-label="Tutup"><X size={18} /></button></div>{children}
-    </div></div>;
-}
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block text-xs font-semibold muted">{label}<div className="mt-1.5 text-sm font-normal">{children}</div></label>;
-}
-const form = (fn: (v: Record<string, string>) => Promise<unknown>) => async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  const v = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
-  await fn(v);
-};
-function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
-  return <div className="panel p-5"><p className="muted text-xs font-semibold uppercase tracking-wider">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p>{sub && <p className="muted mt-1 text-xs">{sub}</p>}</div>;
-}
 function KpiRow({ k, data }: { k: any; data: Data }) {
   const m = data.metrics[k.metric];
   const a = Number(k.actual), t = Number(k.target), p = pct(a, t);
@@ -161,56 +123,6 @@ function Dashboard({ data, me, go }: any) {
       <section className="panel p-6"><h2 className="mb-4 font-semibold">Aktivitas Terbaru</h2>
         <ul className="space-y-3 text-sm">{data.activities.map((a: any) => <li key={a.id} className="flex justify-between gap-3"><span>{a.message}</span><span className="muted shrink-0 text-xs">{new Date(a.createdAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul></section>
     </div></>;
-}
-
-/* ---------- board ---------- */
-function Board({ data, act, me, isAdmin }: any) {
-  const [open, setOpen] = useState(false);
-  const [only, setOnly] = useState(false);
-  const [edit, setEdit] = useState<any>(null);
-  const members = data.users.filter((u: any) => u.role !== "ADMIN");
-  const tasks = data.tasks.filter((t: any) => !only || t.assigneeId === me.id);
-  return <>
-    <Header title="Papan Tugas" sub={isAdmin ? "Berikan jobdesk dan pantau progres tim." : "Perbarui status tugas yang ditugaskan kepada Anda."}>
-      <div className="flex gap-2"><button className="btn-ghost" onClick={() => setOnly(!only)}>{only ? "Semua tugas" : "Tugas saya"}</button>{isAdmin && <button className="btn" onClick={() => setOpen(true)}><Plus size={16} />Jobdesk baru</button>}</div>
-    </Header>
-    <div className="grid gap-4 overflow-x-auto pb-2 md:grid-cols-5">
-      {TASK_COLS.map(([status, label]) => { const col = tasks.filter((t: any) => t.status === status); return <div key={status} className="min-w-[210px]">
-        <p className="muted mb-3 text-xs font-bold uppercase tracking-wider">{label} · {col.length}</p>
-        <div className="space-y-3">{col.map((t: any) => { const editable = isAdmin || t.assigneeId === me.id; return <div key={t.id} className="panel p-4 text-sm">
-          <p className="font-semibold">{t.title}</p><p className="muted mt-1 text-xs">{t.project.name}</p>
-          {t.description && <p className="muted mt-2 text-xs">{t.description}</p>}
-          <div className="mt-3 flex items-center justify-between text-xs"><span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">{t.effortPoints} poin</span><span className="muted">{t.assignee?.name ?? "Belum ditugaskan"}</span></div>
-          {editable && <div className="mt-3 flex gap-2">
-            <select aria-label="Status" className="field !py-1.5 text-xs" value={t.status} onChange={e => act("task.update", { id: t.id, status: e.target.value, assigneeId: t.assigneeId })}>{TASK_COLS.map(c => <option key={c[0]} value={c[0]}>{c[1]}</option>)}</select>
-            {isAdmin && <select aria-label="Penanggung jawab" className="field !py-1.5 text-xs" value={t.assigneeId ?? ""} onChange={e => act("task.update", { id: t.id, status: t.status, assigneeId: e.target.value })}><option value="">—</option>{members.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>}
-          </div>}
-          {isAdmin && <div className="mt-2 flex gap-3 text-xs"><button className="muted inline-flex items-center gap-1 hover:text-emerald-600" onClick={() => setEdit(t)}><Pencil size={12} />Ubah</button><button className="muted inline-flex items-center gap-1 hover:text-red-500" onClick={() => confirm(`Hapus tugas "${t.title}"?`) && act("task.delete", { id: t.id }, "Tugas dihapus")}><Trash2 size={12} />Hapus</button></div>}
-        </div>; })}</div></div>; })}
-    </div>
-    {edit && <Modal title="Ubah tugas" onClose={() => setEdit(null)}>
-      <form className="space-y-4" onSubmit={form(async v => { if (await act("task.edit", { ...v, id: edit.id }, "Tugas diperbarui")) setEdit(null); })}>
-        <Field label="JUDUL"><input name="title" required defaultValue={edit.title} className="field" /></Field>
-        <Field label="DESKRIPSI"><textarea name="description" rows={2} defaultValue={edit.description ?? ""} className="field" /></Field>
-        <Field label="EFFORT (1–5)"><input name="effortPoints" type="number" min={1} max={5} defaultValue={edit.effortPoints} required className="field" /></Field>
-        <Field label="LINK REPO"><input name="repoUrl" type="url" defaultValue={edit.repoUrl ?? ""} className="field" /></Field>
-        <Field label="LINK FIGMA"><input name="figmaUrl" type="url" defaultValue={edit.figmaUrl ?? ""} className="field" /></Field>
-        <Field label="LINK PREVIEW"><input name="previewUrl" type="url" defaultValue={edit.previewUrl ?? ""} className="field" /></Field>
-        <button className="btn w-full">Simpan perubahan</button>
-      </form></Modal>}
-    {open && <Modal title="Jobdesk baru" onClose={() => setOpen(false)}>
-      <form className="space-y-4" onSubmit={form(async v => { if (await act("task.create", v, "Jobdesk dibuat")) setOpen(false); })}>
-        <Field label="JUDUL"><input name="title" required className="field" /></Field>
-        <Field label="DESKRIPSI"><textarea name="description" rows={2} className="field" /></Field>
-        <Field label="PROYEK"><select name="projectId" required className="field">{data.projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="PENANGGUNG JAWAB"><select name="assigneeId" className="field"><option value="">Belum ditugaskan</option>{members.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({ROLE_LABEL[u.role]})</option>)}</select></Field>
-          <Field label="EFFORT (1–5)"><input name="effortPoints" type="number" min={1} max={5} defaultValue={3} required className="field" /></Field>
-        </div>
-        <Field label="LINK REPO / FIGMA (opsional)"><input name="repoUrl" type="url" placeholder="https://" className="field" /></Field>
-        <button className="btn w-full">Simpan</button>
-      </form></Modal>}
-  </>;
 }
 
 /* ---------- projects ---------- */
@@ -320,17 +232,34 @@ function Kpis({ data, act, isAdmin }: any) {
 }
 
 /* ---------- team ---------- */
-function Team({ data }: any) {
+function Team({ data, act, isAdmin }: any) {
+  const [add, setAdd] = useState(false);
+  const [reset, setReset] = useState<any>(null);
   const members = data.users.filter((u: any) => u.role !== "ADMIN");
   const max = Math.max(1, ...members.map((u: any) => data.memberStats[u.id].open));
   return <>
-    <Header title="Tim" sub="Beban kerja dan kontribusi tiap anggota bulan ini." />
+    <Header title="Tim" sub="Beban kerja dan kontribusi tiap anggota bulan ini.">{isAdmin && <button className="btn" onClick={() => setAdd(true)}><Plus size={16} />Tambah anggota</button>}</Header>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{members.map((u: any) => { const s = data.memberStats[u.id]; return <div key={u.id} className="panel p-6">
       <div className="flex size-12 items-center justify-center rounded-full bg-emerald-600 text-lg font-semibold text-white">{u.name[0]}</div>
       <h3 className="mt-4 font-semibold">{u.name}</h3><p className="muted text-xs">{ROLE_LABEL[u.role]}</p>
       <dl className="mt-4 space-y-3 text-sm"><div><dt className="muted mb-1 flex justify-between text-xs"><span>Tugas terbuka</span><span>{s.open}</span></dt><dd><Bar value={pct(s.open, max)} tone="sky" /></dd></div>
         <div className="flex justify-between"><dt className="muted">Poin selesai</dt><dd className="font-semibold">{s.points}</dd></div>
-        {data.workload[u.id] !== undefined && <div className="flex justify-between"><dt className="muted">Beban aktif</dt><dd className="font-semibold">{data.workload[u.id]} poin</dd></div>}</dl></div>; })}</div></>;
+        {data.workload[u.id] !== undefined && <div className="flex justify-between"><dt className="muted">Beban aktif</dt><dd className="font-semibold">{data.workload[u.id]} poin</dd></div>}</dl>
+      {isAdmin && <button className="muted mt-4 text-xs underline" onClick={() => setReset(u)}>Reset password</button>}</div>; })}</div>
+    {add && <Modal title="Tambah anggota" onClose={() => setAdd(false)}>
+      <form className="space-y-4" onSubmit={form(async v => { if (await act("member.create", v, "Anggota ditambahkan")) setAdd(false); })}>
+        <Field label="NAMA"><input name="name" required className="field" /></Field>
+        <Field label="EMAIL"><input name="email" type="email" required className="field" /></Field>
+        <Field label="PERAN"><select name="role" className="field"><option value="DEVELOPER">Developer</option><option value="MARKETING">Marketing Strategist</option></select></Field>
+        <Field label="PASSWORD AWAL (min. 12 karakter)"><input name="password" type="text" required minLength={12} className="field" /></Field>
+        <p className="muted text-xs">Pembagian laba hanya untuk 4 partner. Anggota ke-5 dan seterusnya otomatis bukan partner.</p>
+        <button className="btn w-full">Tambahkan</button>
+      </form></Modal>}
+    {reset && <Modal title={`Reset password · ${reset.name}`} onClose={() => setReset(null)}>
+      <form className="space-y-4" onSubmit={form(async v => { if (await act("member.reset", { ...v, id: reset.id }, "Password direset")) setReset(null); })}>
+        <Field label="PASSWORD BARU (min. 12 karakter)"><input name="password" type="text" required minLength={12} className="field" /></Field>
+        <button className="btn w-full">Simpan</button>
+      </form></Modal>}</>;
 }
 
 /* ---------- finance ---------- */

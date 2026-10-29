@@ -8,7 +8,13 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { balanceWorkload, calculateProjectSplit, jakartaMonth } from "@/lib/finance";
 import { amount, errorResponse, publicOrigin, sameOrigin, optionalUrl, requireText } from "@/lib/server";
 
-const ADMIN_ONLY = ["project.update", "project.delete", "project.unlink", "task.edit", "lead.delete", "finance.delete", "update.delete", "project.create", "project.status", "project.link", "task.create", "task.delete", "finance.receipt", "finance.expense", "finance.payout", "kpi.set", "kpi.delete"];
+const ADMIN_ONLY = ["member.create", "member.reset", "project.update", "project.delete", "project.unlink", "task.edit", "lead.delete", "finance.delete", "update.delete", "project.create", "project.status", "project.link", "task.create", "task.delete", "finance.receipt", "finance.expense", "finance.payout", "kpi.set", "kpi.delete"];
+const dueDate = (value: unknown) => {
+  if (!value) return null;
+  const date = new Date(`${value}T23:59:00+07:00`);
+  if (Number.isNaN(date.getTime())) throw new Error("VALIDATION:Tanggal tenggat tidak valid");
+  return date;
+};
 const fail = (message: string): never => { throw new Error(`VALIDATION:${message}`); };
 const validEnum = <T extends string>(value: unknown, values: readonly T[], label: string): T =>
   typeof value === "string" && values.includes(value as T) ? value as T : fail(`${label} tidak valid`);
@@ -116,7 +122,7 @@ export async function POST(request: NextRequest) {
         }
         result = await db.task.create({ data: {
           projectId, title: requireText(data.title, "Judul tugas"), description: data.description || null,
-          effortPoints: points, status, completedAt: status === "DONE" ? new Date() : null, assigneeId: data.assigneeId || null,
+          effortPoints: points, status, dueDate: dueDate(data.dueDate), completedAt: status === "DONE" ? new Date() : null, assigneeId: data.assigneeId || null,
           repoUrl: optionalUrl(data.repoUrl), figmaUrl: optionalUrl(data.figmaUrl), previewUrl: optionalUrl(data.previewUrl),
         } });
         await db.activityEvent.create({ data: { kind: "task", message: `Tugas baru: ${data.title}` } });
@@ -175,7 +181,7 @@ export async function POST(request: NextRequest) {
         const points = Number(data.effortPoints);
         if (!Number.isInteger(points) || points < 1 || points > 5) fail("Effort points harus 1–5");
         result = await db.task.update({ where: { id }, data: {
-          title: requireText(data.title, "Judul tugas"), description: data.description || null, effortPoints: points,
+          title: requireText(data.title, "Judul tugas"), description: data.description || null, effortPoints: points, dueDate: dueDate(data.dueDate),
           repoUrl: optionalUrl(data.repoUrl), figmaUrl: optionalUrl(data.figmaUrl), previewUrl: optionalUrl(data.previewUrl),
         } });
         break;
@@ -214,6 +220,26 @@ export async function POST(request: NextRequest) {
       case "update.delete": {
         await db.projectUpdate.delete({ where: { id: requireText(data.id, "ID update") } });
         result = { deleted: true };
+        break;
+      }
+      case "member.create": {
+        const email = requireText(data.email, "Email").toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail("Email tidak valid");
+        const role = validEnum(data.role, ["MARKETING", "DEVELOPER"] as const, "Peran");
+        const password = requireText(data.password, "Password");
+        if (password.length < 12) fail("Password minimal 12 karakter");
+        if (await db.user.findUnique({ where: { email } })) fail("Email sudah terdaftar");
+        // Pembagian laba hanya valid untuk tepat 4 partner; anggota tambahan bukan partner.
+        const partners = await db.user.count({ where: { isPartner: true } });
+        result = await db.user.create({ data: { email, name: requireText(data.name, "Nama"), role, isPartner: partners < 4, passwordHash: hashPassword(password) }, select: { id: true } });
+        await db.activityEvent.create({ data: { kind: "team", message: `Anggota baru: ${data.name}` } });
+        break;
+      }
+      case "member.reset": {
+        const password = requireText(data.password, "Password");
+        if (password.length < 12) fail("Password minimal 12 karakter");
+        await db.user.update({ where: { id: requireText(data.id, "ID anggota") }, data: { passwordHash: hashPassword(password) } });
+        result = { reset: true };
         break;
       }
       case "task.delete": {
