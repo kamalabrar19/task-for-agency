@@ -1,0 +1,31 @@
+# Deploy ke VPS: salin .env.production -> .env, isi nilainya, lalu:
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Caddy mengurus HTTPS otomatis untuk $DOMAIN (arahkan A record domain ke IP server).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agency
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD}
+      POSTGRES_DB: agency
+    volumes: [agency_pgdata:/var/lib/postgresql/data]
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://agency:${DB_PASSWORD}@db:5432/agency?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:?isi SESSION_SECRET}
+      NEXT_PUBLIC_APP_URL: https://${DOMAIN}
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?isi DOMAIN}
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data]
+volumes:
+  agency_pgdata:
+  caddy_data:

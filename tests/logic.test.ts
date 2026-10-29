@@ -49,3 +49,13 @@ test("kpi actuals: revenue nets refunds, points scoped per member", async () => 
   assert.equal(kpiActual("TASK_POINTS_DONE", null, input), 8);
   assert.equal(progressPct(150, 100), 100);
 });
+
+test("project health: late, at risk, on track, done", async () => {
+  const { projectHealth } = await import("../src/lib/health");
+  const now = new Date("2026-03-10T00:00:00Z");
+  const base = { createdAt: "2026-03-01T00:00:00Z", done: 1, total: 4 };
+  assert.equal(projectHealth({ ...base, status: "ACTIVE", deadline: "2026-03-09T00:00:00Z" }, now), "LATE");
+  assert.equal(projectHealth({ ...base, status: "ACTIVE", deadline: "2026-03-12T00:00:00Z" }, now), "AT_RISK");
+  assert.equal(projectHealth({ ...base, done: 3, status: "ACTIVE", deadline: "2026-03-30T00:00:00Z" }, now), "ON_TRACK");
+  assert.equal(projectHealth({ ...base, status: "COMPLETED", deadline: "2026-03-01T00:00:00Z" }, now), "DONE");
+});

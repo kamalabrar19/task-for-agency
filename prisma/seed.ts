@@ -2,7 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/password";
 
 const db = new PrismaClient();
-const password = process.env.SEED_PASSWORD ?? "agency123";
+const production = process.env.NODE_ENV === "production";
+const password = process.env.SEED_PASSWORD ?? (production ? "" : "agency123");
+if (password.length < 12 && production) throw new Error("Set SEED_PASSWORD (min 12 karakter) sebelum seed di produksi");
 
 async function main() {
   const team = [
@@ -20,7 +22,7 @@ async function main() {
       create: { name, email, role, isPartner, passwordHash: hashPassword(password) },
     });
   }
-  if (await db.client.count()) return;
+  if (production || await db.client.count()) return; // data demo hanya untuk lokal
   const users = await db.user.findMany();
   const by = (n: string) => users.find((u) => u.name === n)!;
   const [veby, dilo, natah, abe] = [by("Veby"), by("Dilo"), by("Natah"), by("Abe")];

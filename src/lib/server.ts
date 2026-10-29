@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export function errorResponse(error: unknown) {
   console.error(error);
@@ -23,4 +23,16 @@ export function optionalUrl(value: unknown) {
     if (!["http:", "https:"].includes(url.protocol)) throw new Error();
     return url.toString();
   } catch { throw new Error("VALIDATION:URL harus menggunakan http/https"); }
+}
+
+/** Tolak request lintas-origin; bandingkan host saja agar aman di balik reverse proxy HTTPS. */
+export function sameOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try { return new URL(origin).host === (request.headers.get("x-forwarded-host") ?? request.headers.get("host")); } catch { return false; }
+}
+
+/** URL publik aplikasi untuk membuat link yang dibagikan ke klien. */
+export function publicOrigin(request: NextRequest) {
+  return (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/$/, "");
 }

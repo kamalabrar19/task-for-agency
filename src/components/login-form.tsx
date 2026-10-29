@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
+import ThemeToggle from "@/components/theme-toggle";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -14,13 +15,20 @@ export default function LoginForm() {
       const response = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error);
-      window.location.href = "/";
+      window.location.href = "/app";
     } catch (e) { setError(e instanceof Error ? e.message : "Gagal login"); setBusy(false); }
   }
-  return <main className="flex min-h-screen items-center justify-center bg-[#0b0d13] px-5 text-white">
-    <div className="w-full max-w-sm"><div className="mb-12 flex items-center gap-3 text-sm font-bold tracking-[.25em]"><span className="flex size-10 items-center justify-center rounded-xl bg-violet-600 text-xl">✳</span> AGENCY / WORKSPACE</div>
-      <div className="rounded-2xl border border-[#272936] bg-[#12141d] p-8"><LockKeyhole className="mb-6 text-violet-400" size={24} /><h1 className="text-2xl font-semibold">Selamat datang kembali.</h1><p className="mt-2 text-sm text-slate-400">Masuk ke ruang kerja tim Anda.</p>
-        <form onSubmit={login} className="mt-8 space-y-4"><label className="block text-xs font-semibold text-slate-400">EMAIL<input autoFocus type="email" required value={email} onChange={e => setEmail(e.target.value)} className="field mt-2" placeholder="nama@agency.local" /></label><label className="block text-xs font-semibold text-slate-400">PASSWORD<input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="field mt-2" placeholder="Masukkan password" /></label>{error && <p role="alert" className="text-sm text-red-400">{error}</p>}<button disabled={busy} className="btn w-full">{busy ? "Memeriksa..." : "Masuk ke workspace"}<ArrowRight size={16} /></button></form>
-      </div><p className="mt-6 text-center text-xs text-slate-500">Akses hanya untuk anggota tim internal.</p></div>
+  return <main className="flex min-h-screen items-center justify-center px-5">
+    <div className="w-full max-w-sm">
+      <div className="mb-10 flex items-center justify-between"><a href="/" className="flex items-center gap-2 font-bold tracking-tight"><span className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white">B</span>BikinSaaS</a><ThemeToggle /></div>
+      <div className="panel p-8"><LockKeyhole className="mb-5 text-emerald-600" size={24} /><h1 className="text-2xl font-semibold">Masuk ke workspace</h1><p className="muted mt-2 text-sm">Khusus anggota tim BikinSaaS.</p>
+        <form onSubmit={login} className="mt-7 space-y-4">
+          <label className="muted block text-xs font-semibold">EMAIL<input autoFocus type="email" required value={email} onChange={e => setEmail(e.target.value)} className="field mt-2" placeholder="nama@agency.local" autoComplete="username" /></label>
+          <label className="muted block text-xs font-semibold">PASSWORD<input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="field mt-2" autoComplete="current-password" /></label>
+          {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+          <button disabled={busy} className="btn w-full">{busy ? "Memeriksa…" : "Masuk"}<ArrowRight size={16} /></button>
+        </form>
+      </div>
+    </div>
   </main>;
 }

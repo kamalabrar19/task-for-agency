@@ -12,7 +12,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
     "db:local": "node scripts/local-db.mjs",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
+    "user:add": "tsx --env-file=.env scripts/add-user.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
