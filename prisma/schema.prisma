@@ -1,0 +1,207 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  ADMIN
+  MARKETING
+  DEVELOPER
+}
+
+enum LeadStage {
+  PROSPECT
+  NEGOTIATION
+  PROPOSAL_SENT
+  DEAL
+  LOST
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum ReceiptKind {
+  PAYMENT
+  REFUND
+}
+
+enum ServiceType {
+  LANDING_PAGE
+  COMPANY_PROFILE
+  CUSTOM_SYSTEM
+  INTEGRATION
+}
+
+enum KpiMetric {
+  REVENUE
+  PROJECTS_COMPLETED
+  TASK_POINTS_DONE
+  LEADS_CREATED
+  DEALS_WON
+  ON_TIME_RATE
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      UserRole
+  isPartner Boolean  @default(true)
+  passwordHash String?
+  kpis      Kpi[]
+  clients   Client[] @relation("ClientOwner")
+  createdAt DateTime @default(now())
+  tasks     Task[]   @relation("TaskAssignee")
+  payouts   Payout[]
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  contact   String
+  leadStage LeadStage @default(PROSPECT)
+  notes     String?   @db.Text
+  ownerId   String?
+  dealAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+  owner     User?     @relation("ClientOwner", fields: [ownerId], references: [id])
+
+  @@index([leadStage])
+}
+
+model Project {
+  id                  String        @id @default(cuid())
+  clientId            String
+  name                String
+  brief               String?       @db.Text
+  contractValue       Decimal       @db.Decimal(18, 0)
+  status              ProjectStatus @default(PLANNED)
+  serviceType         ServiceType   @default(LANDING_PAGE)
+  deadline            DateTime?
+  completedAt         DateTime?
+  repoUrl             String?
+  figmaUrl            String?
+  stagingUrl          String?
+  liveUrl             String?
+  credentialRef       String?
+  publicTokenHash     String?       @unique
+  publicLinkExpiresAt DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  client              Client        @relation(fields: [clientId], references: [id])
+  tasks               Task[]
+  expenses            Expense[]
+  ledger              FinancialLedger[]
+  payouts             Payout[]
+
+  @@index([status])
+}
+
+model Task {
+  id           String     @id @default(cuid())
+  projectId    String
+  assigneeId   String?
+  title        String
+  description  String?    @db.Text
+  status       TaskStatus @default(BACKLOG)
+  effortPoints Int
+  position     Int        @default(0)
+  completedAt  DateTime?
+  repoUrl      String?
+  figmaUrl     String?
+  previewUrl   String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  project      Project    @relation(fields: [projectId], references: [id])
+  assignee     User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([projectId, status, position])
+  @@index([assigneeId, status])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  projectId   String
+  category    String
+  description String
+  amount      Decimal  @db.Decimal(18, 0)
+  incurredAt  DateTime
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, incurredAt])
+}
+
+model FinancialLedger {
+  id         String      @id @default(cuid())
+  projectId  String
+  kind       ReceiptKind
+  amount     Decimal     @db.Decimal(18, 0)
+  occurredAt DateTime
+  note       String?
+  createdAt  DateTime    @default(now())
+  project    Project     @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, occurredAt])
+}
+
+model Payout {
+  id        String       @id @default(cuid())
+  projectId String
+  memberId  String
+  amount    Decimal      @db.Decimal(18, 0)
+  status    PayoutStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime     @default(now())
+  project   Project      @relation(fields: [projectId], references: [id])
+  member    User         @relation(fields: [memberId], references: [id])
+
+  @@unique([projectId, memberId])
+  @@index([memberId, paidAt])
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  message   String
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Kpi {
+  id        String    @id @default(cuid())
+  metric    KpiMetric
+  period    String
+  target    Decimal   @db.Decimal(18, 0)
+  ownerId   String?
+  createdAt DateTime  @default(now())
+  owner     User?     @relation(fields: [ownerId], references: [id])
+
+  @@unique([metric, period, ownerId])
+  @@index([period])
+}

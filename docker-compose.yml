@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agency
+      POSTGRES_PASSWORD: agency
+      POSTGRES_DB: agency
+    ports:
+      - "5432:5432"
+    volumes:
+      - agency_pgdata:/var/lib/postgresql/data
+volumes:
+  agency_pgdata:

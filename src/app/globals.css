@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root { color-scheme: light; background: #f7f8fb; color: #161a28; }
+.dark { color-scheme: dark; background: #0b0d13; color: #eceef6; }
+body { font-family: Arial, Helvetica, sans-serif; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+input, textarea, select { outline: none; }
+::selection { background: #7256d7; color: white; }
+::-webkit-scrollbar { height: 7px; width: 7px; }
+::-webkit-scrollbar-thumb { background: #77799066; border-radius: 999px; }
+.panel { @apply rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#272936] dark:bg-[#12141d] dark:shadow-none; }
+.field { @apply w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 dark:border-[#303240] dark:bg-[#191b25] dark:text-slate-100; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50; }
+.btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-[#303240] dark:text-slate-300 dark:hover:bg-[#252735]; }
+.muted { @apply text-slate-500 dark:text-[#898d9f]; }
